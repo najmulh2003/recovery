@@ -11,6 +11,7 @@ import (
 
 const taskTimeout = 15 * time.Minute
 const batchSize = 100
+const maxScanAddresses = 2000 // Maximum number of addresses to scan
 
 // Scanner finds unspent outputs and their transactions when given a map of addresses.
 //
@@ -139,8 +140,14 @@ func (s *Scanner) startScan(ctx *scanContext) {
 	batches := streamBatches(ctx.addresses)
 
 	var client *electrum.Client
+	totalScanned := 0
 
 	for batch := range batches {
+		// Stop the loop if we have reached the maximum number of addresses to scan:
+		if totalScanned >= maxScanAddresses {
+			break
+		}
+
 		// Stop the loop until a client becomes available, or the scan is canceled:
 		select {
 		case <-ctx.stopScan:
@@ -158,6 +165,8 @@ func (s *Scanner) startScan(ctx *scanContext) {
 
 			s.scanBatch(ctx, client, batch)
 		}(batch)
+
+		totalScanned += len(batch)
 	}
 
 	// Wait for all tasks that are still executing to complete:
@@ -191,10 +200,17 @@ func streamBatches(addresses chan libwallet.MuunAddress) chan []libwallet.MuunAd
 
 	go func() {
 		var nextBatch []libwallet.MuunAddress
+		totalAddresses := 0
 
 		for address := range addresses {
+			// Stop streaming if we have reached the maximum number of addresses:
+			if totalAddresses >= maxScanAddresses {
+				break
+			}
+
 			// Add items to the batch until we reach the limit:
 			nextBatch = append(nextBatch, address)
+			totalAddresses++
 
 			if len(nextBatch) < batchSize {
 				continue
