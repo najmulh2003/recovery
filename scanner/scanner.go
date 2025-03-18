@@ -11,7 +11,7 @@ import (
 
 const taskTimeout = 15 * time.Minute
 const batchSize = 100
-const maxScanAddresses = 1300 // Maximum number of addresses to scan
+const maxScanAddresses = 1200 // Maximum number of addresses to scan
 
 // Scanner finds unspent outputs and their transactions when given a map of addresses.
 //
